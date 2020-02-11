@@ -1,7 +1,8 @@
 ## `naz` changelog:
 most recent version is listed first.
 
-
+## **unreleased**
+- support for tls connections
 
 ## **version:** v0.7.7
 - support python version 3.8: https://github.com/komuw/naz/pull/186   
