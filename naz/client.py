@@ -6,6 +6,7 @@ import string
 import typing
 import asyncio
 import logging
+import ssl
 
 
 # pytype: disable=pyi-error
@@ -93,6 +94,7 @@ class Client:
         correlation_handler: typing.Union[None, correlater.BaseCorrelater] = None,
         drain_duration: float = 8.00,
         socket_timeout: float = 30.0,
+        ssl_context=None,
     ) -> None:
         """
         Parameters:
@@ -120,6 +122,7 @@ class Client:
                 SMPP sequence numbers and user applications' log_id's and/or hook_metadata.
             drain_duration: duration in seconds that `naz` will wait for after receiving a termination signal.
             socket_timeout: duration that `naz` will wait, for socket/connection related activities with SMSC, before timing out
+            ssl_context: ssl context to use for tls connections
 
         Raises:
             NazClientError: raised if there’s an error instantiating a naz Client.
@@ -146,6 +149,7 @@ class Client:
             correlation_handler=correlation_handler,
             drain_duration=drain_duration,
             socket_timeout=socket_timeout,
+            ssl_context=ssl_context,
         )
 
         self._PID = os.getpid()
@@ -281,6 +285,7 @@ class Client:
         self.socket_timeout = socket_timeout
         self.SHOULD_SHUT_DOWN: bool = False
         self.drain_lock: asyncio.Lock = asyncio.Lock()
+        self.ssl_context = ssl_context
 
         # For exceptions, we try and avoid catch-all blocks. Instead we catch only the exceptions we expect.
         # Exception hierarchy: https://docs.python.org/3/library/exceptions.html#exception-hierarchy
@@ -308,6 +313,7 @@ class Client:
         correlation_handler: typing.Union[None, correlater.BaseCorrelater],
         drain_duration: float,
         socket_timeout: float,
+        ssl_context: typing.Union[None, ssl.SSLContext],
     ) -> None:
         """
         Checks that the arguments to `naz.Client` are okay.
@@ -470,6 +476,14 @@ class Client:
                     )
                 )
             )
+        if not isinstance(ssl_context, (type(None), ssl.SSLContext)):
+            errors.append(
+                ValueError(
+                    "`ssl_context` should be of type:: `None` or `ssl.SSLContext` You entered: {0}".format(
+                        type(ssl_context)
+                    )
+                )
+            )
         if len(errors):
             raise NazClientError(errors)
 
@@ -574,7 +588,8 @@ class Client:
                 logging.INFO, {"event": "naz.Client.connect", "stage": "start", "log_id": log_id}
             )
             reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(self.smsc_host, self.smsc_port), timeout=self.socket_timeout
+                asyncio.open_connection(self.smsc_host, self.smsc_port, ssl=self.ssl_context),
+                timeout=self.socket_timeout,
             )
             self.reader = reader
             self.writer = writer
