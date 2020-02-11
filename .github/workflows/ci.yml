@@ -1,7 +1,5 @@
 # DOCS: https://help.github.com/en/articles/workflow-syntax-for-github-actions
 
-
-
 name: naz ci
 on: [pull_request, push]
 
